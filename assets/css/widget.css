@@ -1,0 +1,90 @@
+/*
+** Top item groups widget styles.
+**
+** Top hosts' own styles live in the compiled themes (sass/.../_widget-tophosts.scss) and are scoped to
+** `div.dashboard-widget-tophosts` / `form.dashboard-widget-tophosts`. CWidgetBase stamps the contents element with
+** `dashboard-widget-<widget id>` (js/class.widget-base.js) and CWidgetFormView does the same for the edit form, so a
+** module with its own id gets none of them. This file is the Top hosts widget block ported to this widget's id.
+**
+** Kept as plain CSS (no SASS): a module ships static assets and cannot participate in the theme build. Values below
+** are the compiled ones from blue-theme.css; the only theme-dependent value (the thumbnail border) is repeated per
+** theme, keyed off the `theme` attribute CHtmlPageHeader puts on <html>.
+*/
+
+/* Widget configuration. */
+
+form.dashboard-widget-topitemgroups #list_columns .text {
+	max-width: 250px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+form.dashboard-widget-topitemgroups #column {
+	max-width: 250px;
+}
+
+/* Widget view. */
+
+div.dashboard-widget-topitemgroups .list-table.show-thumbnail tbody td {
+	height: 56px;
+	vertical-align: middle;
+}
+
+div.dashboard-widget-topitemgroups .list-table tr[data-hostid] {
+	cursor: pointer;
+}
+
+div.dashboard-widget-topitemgroups .btn-thumbnail {
+	overflow: hidden;
+}
+
+div.dashboard-widget-topitemgroups .btn-thumbnail:not(.btn-link) {
+	width: 100px;
+	height: 56px;
+	background: transparent var(--thumbnail) no-repeat center;
+	background-size: cover;
+	border-color: transparent;
+	text-indent: -9999px;
+}
+
+div.dashboard-widget-topitemgroups .btn-thumbnail:not(.btn-link):not(.is-loading) {
+	border: 1px solid #dfe4e7;
+	border-radius: 3px;
+}
+
+html[theme="dark-theme"] div.dashboard-widget-topitemgroups .btn-thumbnail:not(.btn-link):not(.is-loading) {
+	border-color: #303030;
+}
+
+html[theme="hc-light"] div.dashboard-widget-topitemgroups .btn-thumbnail:not(.btn-link):not(.is-loading) {
+	border-color: #9f9f9f;
+}
+
+html[theme="hc-dark"] div.dashboard-widget-topitemgroups .btn-thumbnail:not(.btn-link):not(.is-loading) {
+	border-color: #444444;
+}
+
+div.dashboard-widget-topitemgroups td {
+	height: 20px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	line-height: 20px;
+}
+
+div.dashboard-widget-topitemgroups .link-action {
+	white-space: nowrap;
+}
+
+/* Without these, a bar gauge / sparkline column collapses to almost nothing and the group name column absorbs all
+   the leftover width of the auto-layout table. */
+
+div.dashboard-widget-topitemgroups z-bar-gauge {
+	min-width: 64px;
+	height: 20px;
+}
+
+div.dashboard-widget-topitemgroups z-sparkline {
+	min-width: 64px;
+	height: 20px;
+}

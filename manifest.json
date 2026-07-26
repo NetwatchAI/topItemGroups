@@ -50,6 +50,7 @@
 		}
 	},
 	"assets": {
+		"css": ["widget.css"],
 		"js": ["class.widget.js"]
 	}
 }
