@@ -539,7 +539,20 @@ class WidgetView extends CControllerDashboardWidgetView {
 	 */
 	private static function getItemsByPattern(string $pattern, bool $numeric_only, ?array $groupids,
 			?array $hostids, string $name_field, bool $select_tags): array {
-		$items = API::Item()->get([
+		// Candidate-item safety cap (TASKS.md §9): a broad pattern must not turn into an unbounded fetch.
+		// Surfacing an actionable "results truncated" message is Phase 6 work (TASKS.md Phase 6 checklist); for
+		// now the cap silently bounds the query instead of letting it run away.
+		//
+		// Computed as its own statement, before the API::Item()->get() call is even started - not inline inside
+		// its argument array. API::X() calls all share a single mutable wrapper object whose ->api property just
+		// gets reassigned per call (see API::getApi()); evaluating a nested API::Settings() call (which
+		// CSettingsHelper::get() makes) while PHP is still busy building the argument array for an outer
+		// API::Item()->get([...]) call clobbers that shared ->api property to 'settings' before ->get() ever
+		// runs, silently misdispatching the whole call as settings.get. Building the options array as its own
+		// variable first (matching topitems::getHosts()'s own pattern) avoids the interleaving entirely.
+		$limit = CSettingsHelper::get(CSettingsHelper::SEARCH_LIMIT);
+
+		$options = [
 			'output' => ['itemid', 'hostid', 'key_', 'name', 'name_resolved', 'history', 'trends', 'value_type',
 				'units', 'lastclock'
 			],
@@ -556,14 +569,11 @@ class WidgetView extends CControllerDashboardWidgetView {
 				'status' => ITEM_STATUS_ACTIVE,
 				'value_type' => $numeric_only ? [ITEM_VALUE_TYPE_FLOAT, ITEM_VALUE_TYPE_UINT64] : null
 			],
-			// Candidate-item safety cap (TASKS.md §9): a broad pattern must not turn into an unbounded fetch.
-			// Surfacing an actionable "results truncated" message is Phase 6 work (TASKS.md Phase 6 checklist);
-			// for now the cap silently bounds the query instead of letting it run away.
-			'limit' => CSettingsHelper::get(CSettingsHelper::SEARCH_LIMIT),
+			'limit' => $limit,
 			'preservekeys' => true
-		]);
+		];
 
-		return self::checkApiResult($items);
+		return self::checkApiResult(API::Item()->get($options));
 	}
 
 	/**
