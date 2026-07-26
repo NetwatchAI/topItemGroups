@@ -60,7 +60,19 @@ class WidgetView extends CControllerDashboardWidgetView {
 			$data['rows'] = [];
 		}
 		else {
-			$data += $this->getData();
+			try {
+				$data += $this->getData();
+			}
+			catch (\Exception $e) {
+				// API::Item()->get() returns false (not an exception) on a rejected/invalid call, queuing a
+				// message instead of throwing (see CFrontendApiWrapper::callMethod()). getItemsByPattern() and
+				// getGroupDiscoveryItems() turn that into a thrown exception so a bad call surfaces here as a
+				// clear widget error instead of an uncaught TypeError on a strict `: array` return type.
+				$data['configuration'] = $this->fields_values['columns'];
+				$data['show_thumbnail'] = false;
+				$data['rows'] = [];
+				$data['error'] = $e->getMessage();
+			}
 		}
 
 		$this->setResponse(new CControllerResponseData($data));
@@ -527,7 +539,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 	 */
 	private static function getItemsByPattern(string $pattern, bool $numeric_only, ?array $groupids,
 			?array $hostids, string $name_field, bool $select_tags): array {
-		return API::Item()->get([
+		$items = API::Item()->get([
 			'output' => ['itemid', 'hostid', 'key_', 'name', 'name_resolved', 'history', 'trends', 'value_type',
 				'units', 'lastclock'
 			],
@@ -539,7 +551,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 			'webitems' => true,
 			'searchWildcardsEnabled' => true,
 			'searchByAny' => true,
-			'search' => [$name_field => $pattern],
+			'search' => [$name_field => [$pattern]],
 			'filter' => [
 				'status' => ITEM_STATUS_ACTIVE,
 				'value_type' => $numeric_only ? [ITEM_VALUE_TYPE_FLOAT, ITEM_VALUE_TYPE_UINT64] : null
@@ -550,6 +562,22 @@ class WidgetView extends CControllerDashboardWidgetView {
 			'limit' => CSettingsHelper::get(CSettingsHelper::SEARCH_LIMIT),
 			'preservekeys' => true
 		]);
+
+		return self::checkApiResult($items);
+	}
+
+	/**
+	 * API::X()->get() returns false (not a thrown exception) when Zabbix's own input validation rejects a call,
+	 * queuing a message instead (CFrontendApiWrapper::callMethod()). Every fetch in this pipeline goes through
+	 * here so a rejected call becomes a clear widget error instead of an uncaught TypeError against a `: array`
+	 * return type - see doAction()'s try/catch.
+	 */
+	private static function checkApiResult($result): array {
+		if ($result === false) {
+			throw new \Exception(implode(' ', array_column(get_and_clear_messages(), 'message')));
+		}
+
+		return $result;
 	}
 
 	/**
@@ -574,13 +602,13 @@ class WidgetView extends CControllerDashboardWidgetView {
 
 		switch ($groupby_config['mode']) {
 			case GroupKeyResolver::MODE_ITEM_NAME_PATTERN:
-				$options['search'] = [$name_field => $groupby_config['pattern']];
+				$options['search'] = [$name_field => [$groupby_config['pattern']]];
 				$options['searchWildcardsEnabled'] = true;
 
 				break;
 
 			case GroupKeyResolver::MODE_ITEM_KEY_PATTERN:
-				$options['search'] = ['key_' => $groupby_config['pattern']];
+				$options['search'] = ['key_' => [$groupby_config['pattern']]];
 				$options['searchWildcardsEnabled'] = true;
 
 				break;
@@ -595,7 +623,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 			// must be fetched (capped) and resolved in PHP.
 		}
 
-		return API::Item()->get($options);
+		return self::checkApiResult(API::Item()->get($options));
 	}
 
 	/**
