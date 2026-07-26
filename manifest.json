@@ -5,7 +5,7 @@
 	"name": "Top item groups",
 	"namespace": "TopItemGroups",
 	"version": "1.0",
-	"author": "Zabbix",
+	"author": "Netwatch",
 	"description": "Displays top N item groups (an entity extracted from item names/keys/tags, such as a site, database or mount point) ranked by item value, with configurable columns.",
 	"url": "",
 	"widget": {
