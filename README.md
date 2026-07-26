@@ -79,6 +79,24 @@ Identical to Top hosts, plus one new data source:
 - **Text** — a static string supporting `{HOST.*}`/`{INVENTORY.*}`/user macros, resolved against the row's
   representative host, exactly like Top hosts' text columns do.
 
+## Sorting from the table header
+
+Clicking a column header ranks the table by that column; clicking the header that is already ranking toggles
+between Top N and Bottom N. The arrow marks the ranking column and direction.
+
+Two things are worth knowing:
+
+- **Sorting re-ranks, it does not re-order.** The widget only ever fetches values for the whole candidate set for
+  the ranking column, so "top 10 by requests/sec" and "top 10 by errors/sec" are different sets of groups, not the
+  same ten groups in a different order. Clicking a header is exactly equivalent to changing *Order by* in the
+  configuration — hence the round trip to the server.
+- **The choice is yours alone and is temporary.** It lives in the browser: it survives the widget's own refresh
+  cycle, but not a page reload, and it is not shared with anyone else viewing the dashboard. Reconfiguring the
+  widget rebuilds it and *Order by* takes over again. Make a sort order permanent by setting *Order by*.
+
+Ranking by a binary-valued column is accepted but only selects rows — binary values have no defined order, the same
+as when such a column is chosen in *Order by*.
+
 ## Worked examples
 
 Configuration only — none of these need code changes.

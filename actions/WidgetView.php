@@ -37,18 +37,33 @@ class WidgetView extends CControllerDashboardWidgetView {
 	/** @property int $sparkline_max_samples  Limit of samples when requesting sparkline graph data for time period. */
 	protected int $sparkline_max_samples;
 
+	/** @property int $sort_column  Effective ranking column index - see self::getSortColumn(). */
+	protected int $sort_column;
+
+	/** @property int $sort_order  Effective ranking direction, one of Widget::ORDER_TOP_N/ORDER_BOTTOM_N. */
+	protected int $sort_order;
+
 	protected function init(): void {
 		parent::init();
 
+		// sort_column/sort_order arrive from a clicked table header (CWidgetTopItemGroups::getUpdateRequestData());
+		// like contents_width they are request state, not widget fields, so they are whitelisted here.
 		$this->addValidationRules([
-			'contents_width'	=> 'int32'
+			'contents_width'	=> 'int32',
+			'sort_column'		=> 'int32',
+			'sort_order'		=> 'in '.implode(',', [Widget::ORDER_TOP_N, Widget::ORDER_BOTTOM_N])
 		]);
 	}
 
 	protected function doAction(): void {
+		$this->sort_column = $this->getSortColumn();
+		$this->sort_order = $this->getSortOrder();
+
 		$data = [
 			'name' => $this->getInput('name', $this->widget->getDefaultName()),
 			'error' => null,
+			'sort_column' => $this->sort_column,
+			'sort_order' => $this->sort_order,
 			'user' => [
 				'debug_mode' => $this->getDebugMode()
 			]
@@ -76,6 +91,35 @@ class WidgetView extends CControllerDashboardWidgetView {
 		}
 
 		$this->setResponse(new CControllerResponseData($data));
+	}
+
+	/**
+	 * Effective ranking column: the header the user last clicked, falling back to the configured "Order by" column.
+	 *
+	 * Header sorting in this widget means re-ranking, not re-ordering the page: only the master column has values
+	 * fetched for the whole candidate set, so "top N by this column" is a different row set, not a permutation of
+	 * the current one. Making the clicked column the master column is therefore the entire server-side change.
+	 *
+	 * The click is request state only - it lives in the JS widget instance, which is destroyed and rebuilt whenever
+	 * the widget is reconfigured (CDashboard::replaceWidgetFromData()), so a configuration change always wins. An
+	 * index that no longer exists (column deleted since the click) falls back to the configured column.
+	 */
+	private function getSortColumn(): int {
+		if ($this->hasInput('sort_column')) {
+			$sort_column = (int) $this->getInput('sort_column');
+
+			if (array_key_exists($sort_column, $this->fields_values['columns'])) {
+				return $sort_column;
+			}
+		}
+
+		return (int) $this->fields_values['column'];
+	}
+
+	private function getSortOrder(): int {
+		return $this->hasInput('sort_order')
+			? (int) $this->getInput('sort_order')
+			: (int) $this->fields_values['order'];
 	}
 
 	private function getData(): array {
@@ -147,7 +191,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$name_field = $this->isTemplateDashboard() ? 'name' : 'name_resolved';
 		$need_tags = $groupby_config['mode'] == GroupKeyResolver::MODE_ITEM_TAG;
 
-		$master_column_index = $this->fields_values['column'];
+		$master_column_index = $this->sort_column;
 		$master_column = $columns[$master_column_index];
 
 		// row_key (see CellResolver::makeRowKey()) => ['hostid' => representative hostid, 'group' => group key].
@@ -206,6 +250,22 @@ class WidgetView extends CControllerDashboardWidgetView {
 
 				break;
 
+			case CWidgetFieldColumnsList::DATA_HOST_NAME:
+				// Rows are discovered from items exactly as for Group name; the value ranked is then the name of
+				// each row's representative host. Top hosts had no equivalent branch (its $hosts *was* the row
+				// set), but "Order by" offers Host name columns (WidgetForm::$field_column_values), and header
+				// sorting offers every column, so this widget needs one.
+				$discovered = self::getGroupDiscoveryItems($groupby_config, $groupids, $hostids, $name_field,
+					$need_tags
+				);
+				CellResolver::resolveItemsToCells($discovered, $groupby_config, $merge_hosts, $name_field, $rows_meta);
+
+				foreach ($rows_meta as $row_key => $meta) {
+					$master_row_values[$row_key] = $hosts[$meta['hostid']]['name'];
+				}
+
+				break;
+
 			case CWidgetFieldColumnsList::DATA_TEXT:
 				$discovered = self::getGroupDiscoveryItems($groupby_config, $groupids, $hostids, $name_field,
 					$need_tags
@@ -248,7 +308,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 				)
 			);
 
-		if ($this->fields_values['order'] == Widget::ORDER_TOP_N) {
+		if ($this->sort_order == Widget::ORDER_TOP_N) {
 			if ($master_items_only_numeric_present) {
 				arsort($master_row_values, SORT_NUMERIC);
 

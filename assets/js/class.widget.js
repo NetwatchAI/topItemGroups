@@ -18,6 +18,10 @@ class CWidgetTopItemGroups extends CWidget {
 	static VALUE_TYPE_IMAGE = 'image';
 	static VALUE_TYPE_RAW = 'raw';
 
+	// Must match Widget::ORDER_TOP_N / ORDER_BOTTOM_N.
+	static ORDER_TOP_N = 2;
+	static ORDER_BOTTOM_N = 3;
+
 	#binary_data_cache = new Map();
 	#binary_buttons = new Map();
 
@@ -39,6 +43,27 @@ class CWidgetTopItemGroups extends CWidget {
 	 */
 	#selected_hostid = null;
 
+	/**
+	 * Ranking column index and direction requested by clicking a table header, or null while the widget is ranked
+	 * as configured. Sent with every update, so a chosen sorting survives the refresh cycle; it lives only in this
+	 * instance, which the dashboard rebuilds on any configuration change, so it never outlives "Order by".
+	 *
+	 * @type {number|null}
+	 */
+	#sort_column = null;
+	#sort_order = null;
+
+	getUpdateRequestData() {
+		const request_data = super.getUpdateRequestData();
+
+		if (this.#sort_column !== null) {
+			request_data.sort_column = this.#sort_column;
+			request_data.sort_order = this.#sort_order;
+		}
+
+		return request_data;
+	}
+
 	setContents(response) {
 		super.setContents(response);
 
@@ -54,6 +79,7 @@ class CWidgetTopItemGroups extends CWidget {
 		}
 
 		this.#table_body.addEventListener('click', e => this.#onTableBodyClick(e));
+		this.#table_body.tHead?.addEventListener('click', e => this.#onTableHeadClick(e));
 
 		this.#loadThumbnails(this.#makeUrls());
 
@@ -128,6 +154,34 @@ class CWidgetTopItemGroups extends CWidget {
 			this.#selectHost();
 			this.#broadcastSelected();
 		}
+	}
+
+	/**
+	 * Rank by the clicked column, toggling the direction when the column is already the ranking one.
+	 *
+	 * The current state is read back from the table rather than from this instance: the server resolves it (a
+	 * configuration change or a deleted column overrides a previous click), so its answer is the one to toggle.
+	 */
+	#onTableHeadClick(e) {
+		const header = e.target.closest('[data-column-index]');
+
+		if (header === null) {
+			return;
+		}
+
+		const column_index = parseInt(header.dataset.columnIndex);
+		const current_column = parseInt(this.#table_body.dataset.sortColumn);
+		const current_order = parseInt(this.#table_body.dataset.sortOrder);
+
+		// Switching columns keeps the direction: "Top N" stays "Top N", just ranked by something else.
+		this.#sort_column = column_index;
+		this.#sort_order = column_index === current_column
+			? (current_order === CWidgetTopItemGroups.ORDER_TOP_N
+				? CWidgetTopItemGroups.ORDER_BOTTOM_N
+				: CWidgetTopItemGroups.ORDER_TOP_N)
+			: current_order;
+
+		this._startUpdating();
 	}
 
 	#makeUrls() {

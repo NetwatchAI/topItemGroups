@@ -25,7 +25,12 @@ use Modules\TopItemGroups\Widget;
 
 use Modules\TopItemGroups\Includes\CWidgetFieldColumnsList;
 
-$table = (new CTableInfo())->addClass($data['show_thumbnail'] ? 'show-thumbnail' : null);
+$table = (new CTableInfo())
+	->addClass($data['show_thumbnail'] ? 'show-thumbnail' : null)
+	// The current ranking state, read back by CWidgetTopItemGroups when a header is clicked: the server is the
+	// authority on it, since a clicked column can be superseded by a configuration change at any time.
+	->setAttribute('data-sort-column', $data['sort_column'])
+	->setAttribute('data-sort-order', $data['sort_order']);
 
 if ($data['error'] !== null) {
 	$table->setNoDataMessage($data['error']);
@@ -33,16 +38,20 @@ if ($data['error'] !== null) {
 else {
 	$header = [];
 
-	foreach ($data['configuration'] as $column_config) {
-		if (shouldUseDoubleColumnHeader($column_config)) {
-			$header[] = (new CColHeader(
-				(new CSpan($column_config['name']))
-					->setTitle($column_config['name'])
-			))->setColSpan(2);
-		}
-		else {
-			$header[] = new CColHeader($column_config['name']);
-		}
+	// Ranked descending for Top N, ascending for Bottom N. Same indicator markup the Action log widget uses.
+	$sort_arrow = (new CSpan())
+		->addClass($data['sort_order'] == Widget::ORDER_TOP_N ? ZBX_STYLE_ARROW_DOWN : ZBX_STYLE_ARROW_UP);
+
+	foreach ($data['configuration'] as $column_index => $column_config) {
+		// An unnamed column has no label to click, but the cell itself stays a valid target.
+		$label = $column_config['name'] !== ''
+			? (new CLinkAction($column_config['name']))->setTitle($column_config['name'])
+			: null;
+
+		$header[] = (new CColHeader($column_index == $data['sort_column'] ? [$label, $sort_arrow] : $label))
+			->addClass('js-sort-column')
+			->setAttribute('data-column-index', $column_index)
+			->setColSpan(shouldUseDoubleColumnHeader($column_config) ? 2 : null);
 	}
 
 	$table->setHeader($header);

@@ -35,6 +35,13 @@ div.dashboard-widget-topitemgroups .list-table tr[data-hostid] {
 	cursor: pointer;
 }
 
+/* Clicking a header ranks by that column. The whole cell is the target, so an unnamed column (no label to click)
+   still works. */
+
+div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column {
+	cursor: pointer;
+}
+
 div.dashboard-widget-topitemgroups .btn-thumbnail {
 	overflow: hidden;
 }
