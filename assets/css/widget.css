@@ -42,6 +42,35 @@ div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column {
 	cursor: pointer;
 }
 
+/* Core turns any header link into a block that fills the cell (`.list-table thead th a`: display: block, margin:
+   -1em, padding: 1em) so the whole cell highlights on hover. Two side effects to undo here: a block label pushes
+   the sort arrow onto the line below it, and the negative-margin/padding pair makes the hover background bloom out
+   past the text. The cell is already the click target via its own handler, so the label can stay inline. */
+
+div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column a {
+	display: inline;
+	margin: 0;
+	padding: 0;
+	transition: none;
+}
+
+/* Drop core's hover/focus background and .link-action's colour shift and underline. */
+
+div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column a:hover,
+div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column a:focus,
+div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column a:active {
+	margin: 0;
+	background-color: transparent;
+	color: inherit;
+	border-bottom: 0;
+}
+
+/* The whole cell is clickable, so the whole cell drives the affordance - weight only. */
+
+div.dashboard-widget-topitemgroups .list-table thead th.js-sort-column:hover a {
+	font-weight: bold;
+}
+
 div.dashboard-widget-topitemgroups .btn-thumbnail {
 	overflow: hidden;
 }
