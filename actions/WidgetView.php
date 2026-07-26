@@ -156,6 +156,11 @@ class WidgetView extends CControllerDashboardWidgetView {
 
 		$master_items = [];
 		$master_row_values = [];
+
+		// getItemValues()/getItemSparklineValues() are inherited from Top hosts unchanged and speak itemid, while
+		// ranking, slicing and $rows_meta all work in row_key space. Both keyings of the master column's values are
+		// kept: the row-keyed one ranks rows, the itemid-keyed one renders the master column's cells below.
+		$master_item_values = [];
 		$master_sparkline_values = [];
 
 		switch ($master_column['data']) {
@@ -169,7 +174,15 @@ class WidgetView extends CControllerDashboardWidgetView {
 					$rows_meta
 				);
 
-				$master_row_values = self::getItemValues($master_items, $master_column);
+				$master_item_values = self::getItemValues($master_items, $master_column);
+
+				// Rows whose winning item has no value are simply not ranked (and so not shown) - consistent with
+				// the no-backfill decision below.
+				foreach ($master_items as $row_key => $item) {
+					if (array_key_exists($item['itemid'], $master_item_values)) {
+						$master_row_values[$row_key] = $master_item_values[$item['itemid']];
+					}
+				}
 
 				if ($master_column['display'] == CWidgetFieldColumnsList::DISPLAY_SPARKLINE) {
 					$config = $master_column + ['contents_width' => $this->sparkline_max_samples];
@@ -312,11 +325,17 @@ class WidgetView extends CControllerDashboardWidgetView {
 
 			if ($column_index == $master_column_index) {
 				$column_cells = $master_items;
-				$column_item_values = $master_row_values;
+				$column_item_values = $master_item_values;
 				$sparkline_item_values = $master_sparkline_values;
 			}
 			else {
 				$numeric_only = self::isNumericOnlyColumn($column);
+
+				// Row identity is settled by the master column; a non-master column only looks up cells for rows
+				// that already exist. Its meta goes to a throwaway array so it can neither re-add rows already
+				// trimmed away above, nor (when merging) move a shown row's representative hostid out from under
+				// $shown_hostids after the fact.
+				$discard_rows_meta = [];
 
 				if (!$calc_extremes || ($column['min'] !== '' && $column['max'] !== '')) {
 					// Shown rows only. Merged mode cannot narrow by host (see $shown_hostids comment above).
@@ -325,7 +344,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 						$name_field, $need_tags
 					);
 					$column_cells = CellResolver::resolveItemsToCells($fetched, $groupby_config, $merge_hosts, $name_field,
-						$rows_meta
+						$discard_rows_meta
 					);
 					$column_cells = array_intersect_key($column_cells, $master_row_values);
 				}
@@ -336,7 +355,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 						$name_field, $need_tags
 					);
 					$column_cells = CellResolver::resolveItemsToCells($fetched, $groupby_config, $merge_hosts, $name_field,
-						$rows_meta
+						$discard_rows_meta
 					);
 				}
 
