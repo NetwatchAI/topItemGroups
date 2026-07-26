@@ -48,8 +48,16 @@ class GroupKeyResolver {
 	public const MODE_ITEM_TAG = 4;
 	public const MODE_REGEX = 5;
 
+	// Array-key names used to read the item shape this class works with (see the class docblock).
 	public const FIELD_NAME = 'name';
 	public const FIELD_KEY = 'key_';
+
+	// Stored/validated values for $config['match_field']. Deliberately NOT the same as FIELD_NAME/FIELD_KEY above:
+	// CWidgetFieldRadioButtonList (core Zabbix) always saves/validates as an integer despite its docblock claiming
+	// string keys work too, so the widget-facing "Match against" field must use these, translated to FIELD_NAME/
+	// FIELD_KEY by WidgetView::getGroupByConfig() before it ever reaches resolve().
+	public const MATCH_FIELD_NAME = 0;
+	public const MATCH_FIELD_KEY = 1;
 
 	/**
 	 * Resolve the group key for a single item under the given configuration.

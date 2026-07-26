@@ -172,9 +172,9 @@ class WidgetForm extends CWidgetForm {
 			)
 			->addField(
 				(new CWidgetFieldRadioButtonList('groupby_match_field', _('Match against'), [
-					GroupKeyResolver::FIELD_NAME => _('Item name'),
-					GroupKeyResolver::FIELD_KEY => _('Item key')
-				]))->setDefault(GroupKeyResolver::FIELD_NAME)
+					GroupKeyResolver::MATCH_FIELD_NAME => _('Item name'),
+					GroupKeyResolver::MATCH_FIELD_KEY => _('Item key')
+				]))->setDefault(GroupKeyResolver::MATCH_FIELD_NAME)
 			)
 			->addField(
 				(new CWidgetFieldCheckBox('merge_hosts', _('Merge groups across hosts')))->setDefault(0)

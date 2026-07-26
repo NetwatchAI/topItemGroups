@@ -487,13 +487,20 @@ class WidgetView extends CControllerDashboardWidgetView {
 	 * Widget-level "Group by" configuration, in the shape GroupKeyResolver::resolve() expects.
 	 */
 	private function getGroupByConfig(): array {
+		// groupby_match_field is stored/validated as GroupKeyResolver::MATCH_FIELD_* (an integer - see
+		// GroupKeyResolver's class constants for why), translated here to the FIELD_NAME/FIELD_KEY string
+		// GroupKeyResolver::resolve() actually indexes $item with.
+		$match_field = (int) $this->fields_values['groupby_match_field'] == GroupKeyResolver::MATCH_FIELD_KEY
+			? GroupKeyResolver::FIELD_KEY
+			: GroupKeyResolver::FIELD_NAME;
+
 		return [
 			'mode' => (int) $this->fields_values['groupby_mode'],
 			'pattern' => $this->fields_values['groupby_pattern'],
 			'capture' => (int) $this->fields_values['groupby_capture'],
 			'key_param' => (int) $this->fields_values['groupby_key_param'],
 			'tag' => $this->fields_values['groupby_tag'],
-			'match_field' => $this->fields_values['groupby_match_field']
+			'match_field' => $match_field
 		];
 	}
 
